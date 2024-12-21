@@ -4,3 +4,4 @@ transformers
 protobuf
 scikit-learn
 torch
+accelerate
