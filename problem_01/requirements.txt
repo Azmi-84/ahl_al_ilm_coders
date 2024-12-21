@@ -1,0 +1,6 @@
+groq
+datasets
+transformers
+protobuf
+scikit-learn
+torch
