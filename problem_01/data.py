@@ -41,3 +41,46 @@ train_dataset = Dataset.from_pandas(train_df)
 val_dataset = Dataset.from_pandas(val_df)
 
 print(train_dataset[0])
+
+max_length = 512
+df = df[df['source_ids'].apply(len) <= max_length]
+df = df[df['target_ids'].apply(len) <= max_length]
+
+def add_special_tokens(encoded_sequence):
+    return [tokenizer.cls_token_id] + encoded_sequence + [tokenizer.sep_token_id]
+
+df['source_ids'] = df['source_ids'].apply(add_special_tokens)
+df['target_ids'] = df['target_ids'].apply(add_special_tokens)
+
+def create_attention_mask(ids, max_length=512):
+    return [1 if id != tokenizer.pad_token_id else 0 for id in ids] + [0] * (max_length - len(ids))
+
+df['source_attention_mask'] = df['source_ids'].apply(lambda x: create_attention_mask(x, max_length))
+df['target_attention_mask'] = df['target_ids'].apply(lambda x: create_attention_mask(x, max_length))
+
+from torch.utils.data import Dataset
+
+class TranslationDataset(Dataset):
+    def __init__(self, dataframe):
+        self.data = dataframe
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        row = self.data.iloc[idx]
+        return {
+            'input_ids': row['source_ids'],
+            'attention_mask': row['source_attention_mask'],
+            'labels': row['target_ids']
+        }
+
+train_dataset = TranslationDataset(train_df)
+val_dataset = TranslationDataset(val_df)
+
+train_df.to_csv("train_preprocessed.csv", index=False)
+val_df.to_csv("val_preprocessed.csv", index=False)
+
+for i in range(3):
+    print(f"Source: {tokenizer.decode(train_dataset[i]['input_ids'])}")
+    print(f"Target: {tokenizer.decode(train_dataset[i]['labels'])}")
